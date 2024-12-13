@@ -1,0 +1,131 @@
+import random
+import os
+
+# Function to check if a number is prime
+def is_prime(n):
+    if n <= 1:
+        return False
+    for i in range(2, int(n**0.5) + 1):
+        if n % i == 0:
+            return False
+    return True
+
+# Function to find a primitive root of p
+def find_primitive_root(p):
+    for g in range(2, p):
+        if all(pow(g, k, p) != 1 for k in range(1, p - 1)):
+            return g
+    return None
+
+# Generate public and private keys
+def generate_keys():
+    while True:
+        p = random.randint(10**5, 10**6)  # Larger prime for larger message support
+        if is_prime(p):
+            break
+    g = find_primitive_root(p)
+    if g is None:
+        raise ValueError("Failed to find a primitive root for p")
+    x = random.randint(1, p - 2)
+    h = pow(g, x, p)
+    return (p, g, h), x
+
+# Encrypt a message using ElGamal encryption
+def encrypt(public_key, message):
+    p, g, h = public_key
+    k = random.randint(1, p - 2)
+    c1 = pow(g, k, p)
+    c2 = (message * pow(h, k, p)) % p
+    return c1, c2
+
+# Decrypt a ciphertext using ElGamal decryption
+def decrypt(ciphertext, private_key, public_key):
+    c1, c2 = ciphertext
+    p, _, _ = public_key
+    s = pow(c1, private_key, p)
+    s_inv = pow(s, -1, p)
+    return (c2 * s_inv) % p
+
+# Save data to a file
+def save_to_file(filename, data):
+    with open(filename, 'w', encoding='utf-8') as file:
+        file.write(data)
+
+# Read data from a file
+def read_from_file(filename):
+    with open(filename, 'r', encoding='utf-8') as file:
+        return eval(file.read())
+
+# Convert a string to an integer
+def string_to_int(string):
+    return int.from_bytes(string.encode('utf-8'), 'big')
+
+# Convert an integer back to a string
+def int_to_string(number):
+    try:
+        return number.to_bytes((number.bit_length() + 7) // 8, 'big').decode('utf-8')
+    except OverflowError:
+        raise ValueError("Decrypted number is invalid or corrupted.")
+    except UnicodeDecodeError:
+        raise ValueError("Decrypted message cannot be converted back to a valid string.")
+
+# Split a message into chunks that fit within the modulus
+def split_message(message, max_chunk_size):
+    message_bytes = message.encode('utf-8')
+    chunks = [message_bytes[i:i + max_chunk_size] for i in range(0, len(message_bytes), max_chunk_size)]
+    return [int.from_bytes(chunk, 'big') for chunk in chunks]
+
+# Combine decrypted chunks back into the original message
+def combine_chunks(chunks):
+    message_bytes = b"".join(chunk.to_bytes((chunk.bit_length() + 7) // 8, 'big') for chunk in chunks)
+    return message_bytes.decode('utf-8')
+
+# Encrypt a string by splitting it into chunks
+def encrypt_message(public_key, message):
+    p, _, _ = public_key
+    max_chunk_size = (p.bit_length() // 8) - 1  # Ensure each chunk fits within p
+    message_chunks = split_message(message, max_chunk_size)
+    encrypted_chunks = [encrypt(public_key, chunk) for chunk in message_chunks]
+    return encrypted_chunks
+
+# Decrypt a ciphertext into a string
+def decrypt_message(ciphertext, private_key, public_key):
+    decrypted_chunks = [decrypt(chunk, private_key, public_key) for chunk in ciphertext]
+    return combine_chunks(decrypted_chunks)
+
+# Main function to encrypt or decrypt
+def main():
+    choice = input("Choose (E)ncrypt or (D)ecrypt: ").upper()
+    if choice == 'E':
+        public_key, private_key = generate_keys()
+        print("Public Key:", public_key)
+        print("Private Key:", private_key)
+        message = input("Enter your message: ")
+        try:
+            ciphertext = encrypt_message(public_key, message)
+            save_to_file("ciphertext.txt", str(ciphertext))
+            print("Message encrypted and saved to ciphertext.txt.")
+        except ValueError as e:
+            print("Encryption error:", e)
+    elif choice == 'D':
+        file_path = input("Enter the path to the ciphertext file: ")
+        if not os.path.exists(file_path):
+            print("File does not exist.")
+            return
+        ciphertext = read_from_file(file_path)
+        p = int(input("Enter p from the public key: "))
+        g = int(input("Enter g from the public key: "))
+        h = int(input("Enter h from the public key: "))
+        private_key = int(input("Enter the private key: "))
+        public_key = (p, g, h)
+        try:
+            decrypted_message = decrypt_message(ciphertext, private_key, public_key)
+            print("Decrypted Message:", decrypted_message)
+        except ValueError as e:
+            print("Decryption error:", e)
+    else:
+        print("Invalid choice. Please choose either 'E' or 'D'.")
+
+if __name__ == "__main__":
+    main()
+

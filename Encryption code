@@ -1,0 +1,53 @@
+# encryption.py
+import random
+import os
+
+# Read data from a file
+def read_from_file(filename):
+    with open(filename, 'r', encoding='utf-8') as file:
+        return eval(file.read())
+
+# Convert a string to an integer
+def string_to_int(string):
+    return int.from_bytes(string.encode('utf-8'), 'big')
+
+# Encrypt a message using ElGamal encryption
+def encrypt(public_key, message):
+    p, g, h = public_key
+    k = random.randint(1, p - 2)
+    c1 = pow(g, k, p)
+    c2 = (message * pow(h, k, p)) % p
+    return c1, c2
+
+# Split a message into chunks that fit within the modulus
+def split_message(message, max_chunk_size):
+    message_bytes = message.encode('utf-8')
+    chunks = [message_bytes[i:i + max_chunk_size] for i in range(0, len(message_bytes), max_chunk_size)]
+    return [int.from_bytes(chunk, 'big') for chunk in chunks]
+
+# Encrypt a string by splitting it into chunks
+def encrypt_message(public_key, message):
+    p, _, _ = public_key
+    max_chunk_size = (p.bit_length() // 8) - 1  # Ensure each chunk fits within p
+    message_chunks = split_message(message, max_chunk_size)
+    encrypted_chunks = [encrypt(public_key, chunk) for chunk in message_chunks]
+    return encrypted_chunks
+
+# Save data to a file
+def save_to_file(filename, data):
+    with open(filename, 'w', encoding='utf-8') as file:
+        file.write(str(data))
+
+# Main function for encryption
+def main():
+    public_key = read_from_file("public_key.txt")
+    message = input("Enter your message: ")
+    try:
+        ciphertext = encrypt_message(public_key, message)
+        save_to_file("ciphertext.txt", ciphertext)
+        print("Message encrypted and saved to ciphertext.txt.")
+    except ValueError as e:
+        print("Encryption error:", e)
+
+if __name__ == "__main__":
+    main()

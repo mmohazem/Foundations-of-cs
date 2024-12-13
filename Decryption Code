@@ -1,0 +1,54 @@
+# decryption.py
+import os
+
+# Function to read data from a file
+def read_from_file(filename):
+    with open(filename, 'r', encoding='utf-8') as file:
+        return eval(file.read())
+
+# Convert a string to an integer
+def int_to_string(number):
+    try:
+        return number.to_bytes((number.bit_length() + 7) // 8, 'big').decode('utf-8')
+    except OverflowError:
+        raise ValueError("Decrypted number is invalid or corrupted.")
+    except UnicodeDecodeError:
+        raise ValueError("Decrypted message cannot be converted back to a valid string.")
+
+# Decrypt a ciphertext using ElGamal decryption
+def decrypt(ciphertext, private_key, public_key):
+    c1, c2 = ciphertext
+    p, _, _ = public_key
+    s = pow(c1, private_key, p)
+    s_inv = pow(s, -1, p)
+    return (c2 * s_inv) % p
+
+# Combine decrypted chunks back into the original message
+def combine_chunks(chunks):
+    message_bytes = b"".join(chunk.to_bytes((chunk.bit_length() + 7) // 8, 'big') for chunk in chunks)
+    return message_bytes.decode('utf-8')
+
+# Decrypt a message
+def decrypt_message(ciphertext, private_key, public_key):
+    decrypted_chunks = [decrypt(chunk, private_key, public_key) for chunk in ciphertext]
+    return combine_chunks(decrypted_chunks)
+
+# Main function for decryption
+def main():
+    ciphertext = read_from_file("ciphertext.txt")
+    private_key = read_from_file("private_key.txt")
+    
+    p = int(input("Enter p from the public key: "))
+    g = int(input("Enter g from the public key: "))
+    h = int(input("Enter h from the public key: "))
+    
+    public_key = (p, g, h)
+    
+    try:
+        decrypted_message = decrypt_message(ciphertext, private_key, public_key)
+        print("Decrypted Message:", decrypted_message)
+    except ValueError as e:
+        print("Decryption error:", e)
+
+if __name__ == "__main__":
+    main()

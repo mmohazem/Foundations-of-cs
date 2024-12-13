@@ -1,0 +1,50 @@
+# keygen.py
+import random
+import os
+
+# Function to check if a number is prime
+def is_prime(n):
+    if n <= 1:
+        return False
+    for i in range(2, int(n**0.5) + 1):
+        if n % i == 0:
+            return False
+    return True
+
+# Function to find a primitive root of p
+def find_primitive_root(p):
+    for g in range(2, p):
+        if all(pow(g, k, p) != 1 for k in range(1, p - 1)):
+            return g
+    return None
+
+# Generate public and private keys
+def generate_keys():
+    while True:
+        p = random.randint(10**5, 10**6)  # Larger prime for larger message support
+        if is_prime(p):
+            break
+    g = find_primitive_root(p)
+    if g is None:
+        raise ValueError("Failed to find a primitive root for p")
+    x = random.randint(1, p - 2)
+    h = pow(g, x, p)
+    return (p, g, h), x
+
+# Save data to a file
+def save_to_file(filename, data):
+    with open(filename, 'w', encoding='utf-8') as file:
+        file.write(data)
+
+# Main function for key generation
+def main():
+    public_key, private_key = generate_keys()
+    print("Public Key:", public_key)
+    print("Private Key:", private_key)
+
+    # Save public and private keys to files
+    save_to_file("public_key.txt", str(public_key))
+    save_to_file("private_key.txt", str(private_key))
+
+if __name__ == "__main__":
+    main()
